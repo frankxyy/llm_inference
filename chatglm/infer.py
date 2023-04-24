@@ -25,7 +25,6 @@ if __name__ == "__main__":
         # with init_empty_weights():
         tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
         tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        # model = LlamaForCausalLM.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
         config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
         if args.pp:
             with init_empty_weights():
@@ -35,13 +34,12 @@ if __name__ == "__main__":
             model = model.half().cuda()
     else:
         tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
-        # model = AutoModel.from_pretrained(args.model_name, trust_remote_code=True)
         config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
         if args.pp:
             with init_empty_weights():
                 model = AutoModel.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
         else:
-            model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+            model = AutoModel.from_pretrained(args.model_name, trust_remote_code=True)
             model = model.half().cuda()
     
     if args.pp:
