@@ -27,26 +27,27 @@ if __name__ == "__main__":
         tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         # model = LlamaForCausalLM.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
         config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+        if args.pp:
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+        else:
+            model = LlamaForCausalLM.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
+            model = model.half().cuda()
     else:
         tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
         # model = AutoModel.from_pretrained(args.model_name, trust_remote_code=True)
         config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
-        with init_empty_weights():
-            model = AutoModel.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
-            # model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+        if args.pp:
+            with init_empty_weights():
+                model = AutoModel.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+        else:
+            model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+            model = model.half().cuda()
     
     if args.pp:
         from utils import load_model_on_gpus
         model.tie_weights()
         model = load_model_on_gpus(args.model_name, model, num_gpus=args.num_gpus, device_map=None)
-    else:
-        if args.model_name == 'decapoda-research/llama-7b-hf':
-            model = LlamaForCausalLM.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
-        else:
-            model = AutoModel.from_pretrained(args.model_name, trust_remote_code=True)
-        model = model.half().cuda()
         
     # while 1:
     #     pass
