@@ -36,8 +36,8 @@ def nvidia_info():
     return nvidia_dict
 
 def check_gpu_mem_usedRate():
-    max_rate = 0.0
     num_gpu = 2
+    max_rate_lst = [0.0] * num_gpu
     while True:
         info = nvidia_info()
         # print(info)
@@ -47,10 +47,10 @@ def check_gpu_mem_usedRate():
             tot = info['gpus'][gpu_id]['total']
             print(f"GPU {gpu_id} used: {used / 1024 / 1024 / 1024}, \
                   tot: {tot / 1024 / 1024 / 1024}, 使用率：{used/tot}")
-            if used/tot > max_rate:
-                max_rate = used/tot
-            print("GPU {} 最大使用率：{}".format(gpu_id, max_rate) )
-            print("GPU {} 最大使用：{}".format(gpu_id, max_rate*tot / 1024 / 1024 / 1024) )
+            if used/tot > max_rate_lst[gpu_id]:
+                max_rate_lst[gpu_id] = used/tot
+            print("GPU {} 最大使用率：{}".format(gpu_id, max_rate_lst[gpu_id]) )
+            print("GPU {} 最大使用：{}".format(gpu_id, max_rate_lst[gpu_id]*tot / 1024 / 1024 / 1024) )
         
 if __name__ == "__main__":
     check_gpu_mem_usedRate()
