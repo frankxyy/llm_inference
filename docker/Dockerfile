@@ -1,5 +1,6 @@
 FROM nvcr.io/nvidia/cuda:11.3.0-runtime-ubuntu20.04
 COPY Miniconda3-py38_23.1.0-1-Linux-x86_64.sh /opt
+WORKDIR /opt
 RUN sh Miniconda3-py38_23.1.0-1-Linux-x86_64.sh -b
 RUN apt update
 RUN apt install -y curl vim
