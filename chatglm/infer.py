@@ -2,7 +2,7 @@ import argparse
 from statistics import mean
 import time
 import torch
-from transformers import AutoTokenizer, AutoModel, AutoConfig, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModel, AutoConfig, AutoModelForCausalLM, OPTForCausalLM, OPTModel
 from accelerate import init_empty_weights
 
 def add_parser_arguments(parser):
@@ -20,18 +20,28 @@ if __name__ == "__main__":
     add_parser_arguments(parser)
     args = parser.parse_args()
         
-    if args.model_name == 'decapoda-research/llama-7b-hf':
+    if args.model_name.startswith('decapoda-research/llama-7b-hf'):
         from transformers import LlamaTokenizer, LlamaForCausalLM
         # with init_empty_weights():
-        tokenizer = LlamaTokenizer.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
+        tokenizer = LlamaTokenizer.from_pretrained('decapoda-research/llama-7b-hf', trust_remote_code=True)
         tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
         if args.pp:
             with init_empty_weights():
+                config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
                 model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
         else:
-            model = LlamaForCausalLM.from_pretrained("decapoda-research/llama-7b-hf", trust_remote_code=True)
-            model = model.half().cuda()
+            free_in_GB = int(torch.cuda.mem_get_info()[0]/1024**3)
+            max_memory = f'{int(torch.cuda.mem_get_info()[0]/1024**3)-2}GB'
+            n_gpus = torch.cuda.device_count()
+            max_memory = {i: max_memory for i in range(n_gpus)}
+            max_memory = {0: '20GB'}
+            # model = LlamaForCausalLM.from_pretrained(args.model_name, trust_remote_code=True, load_in_8bit=True if \
+                # args.quan == 'int8' else False)
+            model = AutoModelForCausalLM.from_pretrained(args.model_name, trust_remote_code=True, load_in_8bit=True if \
+                args.quan == 'int8' else False)
+                # device_map='auto', max_memory=max_memory, offload_folder='/home/xuyangyang/offload')
+            if args.quan == 'fp16':
+                model = model.half().cuda()
     else:
         tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
         config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
@@ -60,18 +70,19 @@ if __name__ == "__main__":
             raise Exception('num_gpus error')
         model = model.half()
     else:
-        if args.quan == 'fp16' and not args.pp:
-            model = model.half().cuda()
-        elif args.quan == 'int8':
-            model = model.quantize(8).half().cuda()
-        elif args.quan == 'int4':
-            model = model.quantize(4).half().cuda()
+        if args.model_name.startswith('THUDM/chatglm-6b'):
+            if args.quan == 'fp16' and not args.pp:
+                model = model.half().cuda()
+            elif args.quan == 'int8':
+                model = model.quantize(8).half().cuda()
+            elif args.quan == 'int4':
+                model = model.quantize(4).half().cuda()
             
     
     print("type of model is {}".format(type(model)), flush=True)
 
     model = model.eval()
-    ques = "你好,请帮我计算一个数学题:两个苹果加上六个苹果,等于多少个苹果"
+    ques = "你好,请帮我计算一个数学题:两个苹果加上六个苹果,等于多少个苹果, 你好,请帮我计算一个数学题:两个苹果加上六个苹果,等于多少个苹果"
     ques_tokens = tokenizer(ques)
     print("ques_tokens = {}".format(ques_tokens))
     input_len = len(ques_tokens['input_ids'])
